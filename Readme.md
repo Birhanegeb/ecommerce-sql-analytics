@@ -8,10 +8,10 @@ An e-commerce company records its transactional data across several related tabl
 
 The goal of this project is to build a structured PostgreSQL dataset from the generated transactional data and develop a SQL analytics layer that can be used to investigate key areas of e-commerce performance:
 
-* **Sales performance** — How much revenue is generated, and how does sales activity change over time?
-* **Customer purchasing behavior** — Which customers purchase most frequently or generate the most revenue?
-* **Product performance** — Which products and categories contribute most to sales?
-* **Revenue trends** — How do revenue and order activity vary across different periods?
+* **Sales performance** - How much revenue is generated, and how does sales activity change over time?
+* **Customer purchasing behavior** - Which customers purchase most frequently or generate the most revenue?
+* **Product performance** - Which products and categories contribute most to sales?
+* **Revenue trends** - How do revenue and order activity vary across different periods?
 
 The analysis will use SQL techniques including:
 

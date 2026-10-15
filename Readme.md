@@ -1,361 +1,250 @@
 # E-commerce Sales & Customer Analytics
 
-A PostgreSQL-based SQL analytics project using synthetic e-commerce transaction data. The project focuses on analyzing sales performance, customer purchasing behavior, product performance, and revenue trends using SQL.
+A reproducible PostgreSQL analytics project built from synthetic e-commerce transactions. It includes a Python data generator, a Docker Compose environment for PostgreSQL, pgAdmin and Apache Superset, SQL scripts for schema creation, loading, validation and reusable analytics views.
 
-## Problem Statement
+The next project stage is building Superset dashboards from the analytics views.
 
-An e-commerce company records its transactional data across several related tables, including **customers, orders, products, categories, and order items**. While the data captures individual purchases and customer activity, the raw transactional structure is not directly suitable for answering recurring business questions.
-
-The goal of this project is to build a structured PostgreSQL dataset from the generated transactional data and develop a SQL analytics layer that can be used to investigate key areas of e-commerce performance:
-
-* **Sales performance** - How much revenue is generated, and how does sales activity change over time?
-* **Customer purchasing behavior** - Which customers purchase most frequently or generate the most revenue?
-* **Product performance** - Which products and categories contribute most to sales?
-* **Revenue trends** - How do revenue and order activity vary across different periods?
-
-The analysis will use SQL techniques including:
-
-* `JOIN`s to combine related transactional data
-* `GROUP BY` and aggregate functions for business metrics
-* `CTE`s for structuring multi-step analysis
-* Subqueries for filtering and comparison
-* Window functions for rankings, running totals, and period-based analysis
-
-The project demonstrates how PostgreSQL can transform raw e-commerce transactions into structured analytical results that support recurring business questions and decision-making.
-
-## Technology & Environment
-
-The project uses a combination of local development tools and containerized database services.
-
-| Component               | Technology     |
-| ----------------------- | -------------- |
-| Data generation         | Python 3       |
-| Database                | PostgreSQL 16  |
-| Database administration | pgAdmin 4      |
-| Containerization        | Docker Compose |
-| Data format             | CSV            |
-| Query language          | SQL            |
-
-The project runs **Python locally** to generate the synthetic dataset, while **PostgreSQL and pgAdmin run as Docker containers**.
-
-```text
-Local Machine
-│
-├── Python
-│   └── generate_dataset.py
-│       └── generates CSV files
-│
-└── Docker Compose
-    │
-    ├── PostgreSQL
-    │   └── stores and queries the data
-    │
-    └── pgAdmin
-        └── database administration and SQL execution
-```
-
-The generated `data/` directory is mounted into the PostgreSQL container so that PostgreSQL can load the CSV files using the `COPY` command.
-
-PostgreSQL is exposed on host port `5433`, while pgAdmin is available on host port `5050`.
-
-## Dataset
-
-The project uses reproducible synthetic data generated with `generate_dataset.py`.
-
-The dataset currently contains:
-
-| Table         | Description                          |  Rows |
-| ------------- | ------------------------------------ | ----: |
-| `categories`  | Product categories                   |    10 |
-| `products`    | Products and their categories        |   100 |
-| `customers`   | Customer information                 |   300 |
-| `orders`      | Customer orders and order status     | 2,000 |
-| `order_items` | Products purchased within each order | 7,027 |
-
-The tables are connected through primary and foreign-key relationships:
-
-```text
-categories
-    │
-    └── products
-            │
-            └── order_items
-                    │
-                    └── orders
-                            │
-                            └── customers
-```
-
-## Project Structure
+## Project Contents
 
 ```text
 ecommerce-sql-analytics/
-├── docker-compose.yml
-├── .env
-├── .env.example
-├── .gitignore
-├── generate_dataset.py
-├── data_dictionary.md
-│
-├── data/
-│   ├── categories.csv
-│   ├── products.csv
-│   ├── customers.csv
-│   ├── orders.csv
-│   └── order_items.csv
-│
-└── sql/
-    ├── 01_schema.sql
-    └── 02_load.sql
+|-- .env.example                 # Compose settings template; copy to .env
+|-- Dockerfile.superset          # Superset image with the PostgreSQL driver
+|-- docker-compose.yml           # PostgreSQL, pgAdmin and Superset services
+|-- generate_dataset.py          # Reproducible CSV generator
+|-- data_dictionary.md           # CSV fields, SQL columns and relationships
+|-- ecommerce_business_challenge.pdf
+|-- data/                        # Generated CSV files mounted into PostgreSQL
+`-- sql/
+    |-- 01_schema.sql            # Create relational tables
+    |-- 02_load.sql              # Load CSV files with PostgreSQL COPY
+    |-- 03_validate.sql          # Check row counts and data integrity
+    `-- 04_views.sql             # Create analytics views for queries/Superset
 ```
 
-## project Setup
+## Data Model
 
-The stages of the project covers:
+The generator creates 10 categories, 100 products, 300 customers, 2,000 orders and 7,027 order items. The generated dataset is deterministic because the script uses a fixed random seed. Running it again replaces the CSV outputs and refreshes `data_dictionary.md`.
 
-1. Synthetic dataset generation
-2. PostgreSQL database setup
-3. Docker-based PostgreSQL and pgAdmin environment
-4. Database schema creation
-5. CSV data loading
-6. Row-count verification
-7. analytical SQL queries- Future works
+The five tables are related by primary and foreign keys:
 
-## 1. Generate the Dataset
+```text
+categories 1-to-many products 1-to-many order_items many-to-1 orders many-to-1 customers
+```
 
-Generate the synthetic e-commerce data:
+The complete column definitions and constraints are in [data_dictionary.md](data_dictionary.md). Revenue views use the transaction-time `order_items.unit_price` and include completed orders only.
+
+## Requirements
+
+- Docker Engine or Docker Desktop with the Docker Compose v2 plugin (`docker compose`)
+- Python 3 for generating the CSV files (the generator uses only the Python standard library)
+- OpenSSL for creating a Superset secret key (`openssl`)
+
+## Quick Start
+
+Run commands from the project root.
+
+### 1. Generate the dataset
 
 ```bash
 python3 generate_dataset.py
 ```
 
-The script creates:
+This writes the five CSV files under `data/` and updates `data_dictionary.md`. The Docker Compose setup mounts `data/` into the PostgreSQL container at `/data`, which is where the SQL `COPY` commands read the files.
 
-```text
-data/
-├── categories.csv
-├── products.csv
-├── customers.csv
-├── orders.csv
-└── order_items.csv
-```
+### 2. Configure credentials
 
-It also generates:
-
-```text
-data_dictionary.md
-```
-
-The dataset generation uses a fixed random seed to make the data reproducible.
-
-```python
-random.seed(42)
-```
-
-## 2. Configure Environment Variables
-
-a local `.env` file:
-
-```env
-POSTGRES_DB=db_name
-POSTGRES_USER=user_name
-POSTGRES_PASSWORD=password
-
-PGADMIN_DEFAULT_EMAIL=admin@example.com
-PGADMIN_DEFAULT_PASSWORD=password
-```
-
-## 3. Start PostgreSQL and pgAdmin
-
-Start the services:
+Create your local environment file:
 
 ```bash
-docker compose up -d
+cp .env.example .env
 ```
 
-Check the containers:
+Edit `.env` and set unique passwords for PostgreSQL, pgAdmin and Superset. Generate a strong Superset signing key with:
+
+```bash
+openssl rand -base64 42
+```
+
+Put the generated value in `SUPERSET_SECRET_KEY`. Keep `.env` private; it is ignored by Git. Do not use the example passwords in a shared or production environment. If a password contains reserved URL characters, URL-encode it when entering the Superset SQLAlchemy connection URI.
+
+### 3. Validate and start the services
+
+Check that Compose can read the configuration and required variables:
+
+```bash
+docker compose config
+```
+
+Build the local Superset image, then start PostgreSQL, pgAdmin and Superset in the background:
+
+```bash
+docker compose up -d --build
+```
+
+Check service state and published ports:
 
 ```bash
 docker compose ps
 ```
 
-The project uses:
-
-| Service    | Host Port | Container Port |
-| ---------- | --------: | -------------: |
-| PostgreSQL |    `5433` |         `5432` |
-| pgAdmin    |    `5050` |           `80` |
-
-PostgreSQL uses host port `5433` because another PostgreSQL instance is already using host port `5432`.
-
-Open pgAdmin:
-
-```text
-http://localhost:5050
-```
-
-## 4. Verify PostgreSQL
-
-Check that PostgreSQL is accepting connections:
+Follow a service's startup logs when diagnosing startup or connection issues:
 
 ```bash
-docker exec ecommerce-postgres pg_isready -U user -d ecommerce
+docker compose logs -f postgres
+docker compose logs -f pgadmin
+docker compose logs -f superset
 ```
 
-Expected:
+Press `Ctrl+C` to stop following logs; this does not stop the containers.
 
-```text
-/var/run/postgresql:5432 - accepting connections
-```
+| Service | URL / host connection | Host port | Container port |
+|---|---|---:|---:|
+| PostgreSQL | `localhost` from your computer; `postgres` from another Compose service | `5433` | `5432` |
+| pgAdmin | <http://localhost:5050> | `5050` | `80` |
+| Superset | <http://localhost:8090> | `8090` | `8088` |
 
-Verify that the CSV files are available inside the PostgreSQL container:
+The host PostgreSQL port is `5433` to avoid conflicts with a local PostgreSQL server on `5432`. Containers on the Compose network use the service name `postgres` and container port `5432` instead.
+
+## Create and Load the Database
+
+The following commands use the example database name `ecommerce` and user `user` from `.env.example`. If you changed `POSTGRES_DB` or `POSTGRES_USER`, replace those values in the commands. Run them from the project root.
+
+### 4. Check PostgreSQL and mounted files
+
+Confirm PostgreSQL is accepting connections:
 
 ```bash
-docker exec ecommerce-postgres ls -lah /data
+docker compose exec postgres pg_isready -U user -d ecommerce
 ```
 
-Expected files:
+List files visible to PostgreSQL in the mounted `/data` directory:
+
+```bash
+docker compose exec postgres ls -lah /data
+```
+
+### 5. Create the tables
+
+Send `01_schema.sql` to `psql` inside the PostgreSQL container. `-T` disables the pseudo-terminal so shell redirection supplies the SQL file on standard input, and `ON_ERROR_STOP` stops on the first SQL error.
+
+```bash
+docker compose exec -T postgres psql -U user -d ecommerce -v ON_ERROR_STOP=1 < sql/01_schema.sql
+```
+
+### 6. Load CSV data
+
+```bash
+docker compose exec -T postgres psql -U user -d ecommerce -v ON_ERROR_STOP=1 < sql/02_load.sql
+```
+
+The script uses server-side `COPY`, so the CSV paths are `/data/...` inside the container, not local paths. Run schema creation before loading. Loading the same files into already-populated tables will fail on duplicate primary keys; do not rerun it unless you intend to reload the data.
+
+### 7. Validate the loaded data
+
+```bash
+docker compose exec -T postgres psql -U user -d ecommerce -v ON_ERROR_STOP=1 < sql/03_validate.sql
+```
+
+This read-only script reports table counts, compares them with expected dataset sizes, checks missing values, duplicate business keys, orphaned foreign keys and invalid values, and prints the order-status distribution. Check that the count comparison says `PASS` and integrity checks report zero issues. The expected counts are for the current generated dataset.
+
+### 8. Create reusable analytics views
+
+```bash
+docker compose exec -T postgres psql -U user -d ecommerce -v ON_ERROR_STOP=1 < sql/04_views.sql
+```
+
+This creates or replaces four views without changing source rows:
+
+| View | Purpose |
+|---|---|
+| `vw_completed_order_sales` | Revenue and date/customer details at completed-order grain |
+| `vw_monthly_sales` | Monthly completed orders, revenue and average order value |
+| `vw_product_performance` | Completed-order units sold and revenue by product/category |
+| `vw_customer_summary` | Completed-order count, lifetime revenue and most recent order by customer |
+
+List the views to confirm creation:
+
+```bash
+docker compose exec postgres psql -U user -d ecommerce -c "\\dv"
+```
+
+Try a small query against the monthly view:
+
+```bash
+docker compose exec postgres psql -U user -d ecommerce -c "SELECT * FROM vw_monthly_sales ORDER BY sales_month;"
+```
+
+Check that the customer summary includes all customers, including customers with no completed orders:
+
+```bash
+docker compose exec postgres psql -U user -d ecommerce -c "SELECT COUNT(*) AS customers FROM vw_customer_summary;"
+```
+
+## Connect with pgAdmin
+
+1. Open <http://localhost:5050> and sign in with `PGADMIN_DEFAULT_EMAIL` and `PGADMIN_DEFAULT_PASSWORD` from `.env`.
+2. Register a server. Under **General**, choose a name such as `Ecommerce PostgreSQL`.
+3. Under **Connection**, enter the following values, using your `.env` settings:
+
+   | Setting | Value |
+   |---|---|
+   | Host name/address | `postgres` |
+   | Port | `5432` |
+   | Maintenance database | `ecommerce` (`POSTGRES_DB`) |
+   | Username | `user` (`POSTGRES_USER`) |
+   | Password | `POSTGRES_PASSWORD` |
+
+Use `postgres:5432` in pgAdmin because pgAdmin runs in Docker on the same Compose network as PostgreSQL. `localhost:5433` is for clients running on your computer, not for the pgAdmin container.
+
+## Connect Superset to PostgreSQL
+
+### 1. Sign in
+
+Open <http://localhost:8090>. Sign in with username `admin` and the `SUPERSET_ADMIN_PASSWORD` value from `.env`. The Compose startup command creates this account on initial setup. If the account already exists in the persistent Superset volume, changing `.env` does not change its existing password.
+
+### 2. Add the PostgreSQL database
+
+In Superset, open **Settings > Database Connections** (the menu may appear as **Data > Databases** in some versions), then choose **+ Database** or **Add Database** and select PostgreSQL. Enter a SQLAlchemy URI using your PostgreSQL credentials:
 
 ```text
-categories.csv
-products.csv
-customers.csv
-orders.csv
-order_items.csv
+postgresql+psycopg2://user:YOUR_POSTGRES_PASSWORD@postgres:5432/ecommerce
 ```
 
-## 5. Connect PostgreSQL with pgAdmin
+Replace `YOUR_POSTGRES_PASSWORD`, `user` and `ecommerce` with `POSTGRES_PASSWORD`, `POSTGRES_USER` and `POSTGRES_DB` from `.env`. If the password contains characters such as `@`, `/`, `:` or `#`, URL-encode the password before putting it in the URI. Keep the host as `postgres` and port as `5432`; Superset is another Compose service and must use the internal service address, not `localhost:5433`.
 
-Open:
+Use the UI's **Test Connection** action, then save the database connection. The project image installs `psycopg2-binary`, the PostgreSQL driver needed by Superset.
 
-```text
-http://localhost:5050
+### 3. Add analytics views as datasets
+
+After the connection is saved, create datasets from the `public` schema. Select `vw_monthly_sales`, `vw_product_performance`, `vw_customer_summary`, or `vw_completed_order_sales`. These views are the intended starting point for the dashboard work that follows.
+
+## Useful Commands
+
+| Command | What it does |
+|---|---|
+| `python3 generate_dataset.py` | Generate or regenerate the CSV dataset and data dictionary. |
+| `docker compose config` | Resolve and validate the Compose configuration and required environment variables; does not start containers. |
+| `docker compose up -d --build` | Build the Superset image if needed and start all services in the background. |
+| `docker compose ps` | Show service status and port mappings. |
+| `docker compose logs -f superset` | Follow Superset logs for startup and database connection troubleshooting. |
+| `docker compose exec postgres pg_isready -U user -d ecommerce` | Check whether PostgreSQL accepts connections. |
+| `docker compose exec -T postgres psql ... < sql/FILE.sql` | Run a project SQL script inside the PostgreSQL container. Use the full commands in the steps above. |
+| `docker compose down` | Stop and remove containers and the Compose network; named database volumes are retained. |
+| `docker compose down -v` | Also delete named volumes, including PostgreSQL data and Superset state. This is destructive and resets persisted databases/accounts. |
+
+To rebuild only Superset after changing `Dockerfile.superset`:
+
+```bash
+docker compose up -d --build superset
 ```
 
-Log in using the credentials from `.env`.
+## Current Status
 
-Register a new server.
-
-### General
-
-```text
-Name: Ecommerce PostgreSQL
-```
-
-### Connection
-
-```text
-Host name/address: postgres
-Port: 5432
-Maintenance database: ecommerce
-Username: user
-Password: password
-```
-
-> **Important:** When connecting from pgAdmin, use `postgres:5432`, not `localhost:5433`. pgAdmin runs inside Docker and connects to the PostgreSQL service through the Docker network.
-
-## 6. Create the Database Schema
-
-In pgAdmin:
-
-1. Open the `ecommerce` database.
-2. Open **Query Tool**.
-3. Open `sql/01_schema.sql`.
-4. Execute the script.
-
-The script creates:
-
-```text
-categories
-products
-customers
-orders
-order_items
-```
-
-The schema uses primary keys and foreign keys to maintain relationships between the tables.
-
-## 7. Load the CSV Data
-
-After creating the tables, open:
-
-```text
-sql/02_load.sql
-```
-
-Execute the script in pgAdmin.
-
-The data is loaded in dependency order:
-
-```text
-categories
-    ↓
-products
-    ↓
-customers
-    ↓
-orders
-    ↓
-order_items
-```
-
-The loading script uses PostgreSQL `COPY` to load the CSV files mounted into the PostgreSQL container at:
-
-```text
-/data/
-```
-
-## 8. Verify the Loaded Data
-
-Run:
-
-```sql
-SELECT 'categories' AS table_name, COUNT(*) AS row_count
-FROM categories
-
-UNION ALL
-
-SELECT 'products', COUNT(*)
-FROM products
-
-UNION ALL
-
-SELECT 'customers', COUNT(*)
-FROM customers
-
-UNION ALL
-
-SELECT 'orders', COUNT(*)
-FROM orders
-
-UNION ALL
-
-SELECT 'order_items', COUNT(*)
-FROM order_items;
-```
-
-Expected current row counts:
-
-```text
-categories     10
-products       100
-customers      300
-orders         2000
-order_items    7027
-```
-
-## Current Project Status
-
-* [x] Synthetic e-commerce dataset generation
-* [x] Reproducible data generation
-* [x] PostgreSQL Docker setup
-* [x] pgAdmin setup
-* [x] Database connection
-* [x] Relational schema creation
-* [x] CSV data loading
-* [x] Row-count verification
-* [ ] Sales analysis queries
-* [ ] Customer analysis queries
-* [ ] Product and category analysis
-* [ ] Revenue trend analysis
-* [ ] Advanced SQL using CTEs, subqueries, and window functions
+- [x] Reproducible synthetic dataset and data dictionary
+- [x] PostgreSQL, pgAdmin and Superset Compose services
+- [x] Relational schema and CSV loading scripts
+- [x] Data validation script
+- [x] Reusable analytics views
+- [ ] Create Superset datasets and dashboards
+- [ ] Add further sales, customer, product and revenue-trend analysis

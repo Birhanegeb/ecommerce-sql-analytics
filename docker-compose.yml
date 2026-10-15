@@ -24,6 +24,35 @@ services:
       - "5050:80"
     depends_on:
       - postgres
+  superset:
+    image: ecommerce-superset:local
+    build:
+      context: .
+      dockerfile: Dockerfile.superset
+    container_name: ecommerce-superset
+    restart: unless-stopped
+    ports:
+      - "8090:8088"
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY:?Set SUPERSET_SECRET_KEY in .env}
+      SUPERSET_ADMIN_PASSWORD: ${SUPERSET_ADMIN_PASSWORD:?Set SUPERSET_ADMIN_PASSWORD in .env}
+    depends_on:
+      - postgres
+    volumes:
+      - superset_data:/app/superset_home
+    command: >
+      /bin/sh -c "
+      superset db upgrade &&
+      superset fab create-admin
+        --username admin
+        --firstname Superset
+        --lastname Admin
+        --email admin@example.com
+        --password \"$$SUPERSET_ADMIN_PASSWORD\" || true;
+      superset init;
+      /usr/bin/run-server.sh
+      "
 
 volumes:
   postgres_data:
+  superset_data:

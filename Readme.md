@@ -1,8 +1,6 @@
 # E-commerce Sales & Customer Analytics
 
-A reproducible PostgreSQL analytics project built from synthetic e-commerce transactions. It includes a Python data generator, a Docker Compose environment for PostgreSQL, pgAdmin and Apache Superset, SQL scripts for schema creation, loading, validation and reusable analytics views.
-
-The next project stage is building Superset dashboards from the analytics views.
+A reproducible PostgreSQL analytics project built from synthetic e-commerce transactions. It includes a Python data generator, a Docker Compose environment for PostgreSQL, pgAdmin and Apache Superset, SQL scripts for schema creation, loading, validation and reusable analytics views, and a sample dashboard screenshot.
 
 ## Project Contents
 
@@ -15,6 +13,7 @@ ecommerce-sql-analytics/
 |-- data_dictionary.md           # CSV fields, SQL columns and relationships
 |-- ecommerce_business_challenge.pdf
 |-- data/                        # Generated CSV files mounted into PostgreSQL
+|-- sample_dashboards/           # Screenshot of a sample Superset dashboard
 `-- sql/
     |-- 01_schema.sql            # Create relational tables
     |-- 02_load.sql              # Load CSV files with PostgreSQL COPY
@@ -217,7 +216,15 @@ Use the UI's **Test Connection** action, then save the database connection. The 
 
 ### 3. Add analytics views as datasets
 
-After the connection is saved, create datasets from the `public` schema. Select `vw_monthly_sales`, `vw_product_performance`, `vw_customer_summary`, or `vw_completed_order_sales`. These views are the intended starting point for the dashboard work that follows.
+After the connection is saved, create datasets from the `public` schema. Select `vw_monthly_sales`, `vw_product_performance`, `vw_customer_summary`, or `vw_completed_order_sales`. These views are the intended source for dashboard charts and metrics.
+
+## Sample Dashboard
+
+The screenshot below is a visual reference for a Superset dashboard with product revenue, customer revenue, and a total-revenue KPI.
+
+![Sample e-commerce analytics dashboard](sample_dashboards/ecommerce-analysis-2026-10-17T12-15-50.616Z.jpg)
+
+The repository currently contains the screenshot, not a Superset dashboard export. To build a working dashboard, create datasets from the analytics views above and configure the charts in Superset. The SQL views define sales metrics using completed orders only.
 
 ## Useful Commands
 
@@ -246,5 +253,4 @@ docker compose up -d --build superset
 - [x] Relational schema and CSV loading scripts
 - [x] Data validation script
 - [x] Reusable analytics views
-- [ ] Create Superset datasets and dashboards
-- [ ] Add further sales, customer, product and revenue-trend analysis
+- [x] Sample Superset dashboard screenshot

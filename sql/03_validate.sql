@@ -18,6 +18,8 @@ UNION ALL
 SELECT 'orders', COUNT(*) FROM orders
 UNION ALL
 SELECT 'order_items', COUNT(*) FROM order_items
+UNION ALL
+SELECT 'meta_ads_insights', COUNT(*) FROM meta_ads_insights
 ORDER BY table_name;
 
 \echo '=== 2. Compare row counts with expected dataset sizes ==='
@@ -28,6 +30,7 @@ WITH actual AS (
     UNION ALL SELECT 'customers', COUNT(*) FROM customers
     UNION ALL SELECT 'orders', COUNT(*) FROM orders
     UNION ALL SELECT 'order_items', COUNT(*) FROM order_items
+    UNION ALL SELECT 'meta_ads_insights', COUNT(*) FROM meta_ads_insights
 ),
 expected(table_name, expected_rows) AS (
     VALUES
@@ -35,13 +38,18 @@ expected(table_name, expected_rows) AS (
         ('products', 100::bigint),
         ('customers', 300::bigint),
         ('orders', 2000::bigint),
-        ('order_items', 7027::bigint)
+        ('order_items', 7027::bigint),
+        ('meta_ads_insights', NULL::bigint)
 )
 SELECT
     e.table_name,
     e.expected_rows,
     a.actual_rows,
-    CASE WHEN e.expected_rows = a.actual_rows THEN 'PASS' ELSE 'CHECK' END AS result
+    CASE
+        WHEN e.expected_rows IS NULL THEN 'NOT FIXED'
+        WHEN e.expected_rows = a.actual_rows THEN 'PASS'
+        ELSE 'CHECK'
+    END AS result
 FROM expected e
 JOIN actual a USING (table_name)
 ORDER BY e.table_name;
@@ -138,5 +146,23 @@ SELECT status, COUNT(*) AS order_count
 FROM orders
 GROUP BY status
 ORDER BY status;
+
+\echo '=== 8. Meta Ads reporting data ==='
+
+SELECT
+    COUNT(*) AS campaign_day_rows,
+    MIN(date_start) AS first_report_date,
+    MAX(date_stop) AS last_report_date,
+    COUNT(*) FILTER (
+        WHERE impressions < 0
+           OR reach < 0
+           OR clicks < 0
+           OR inline_link_clicks < 0
+           OR spend < 0
+           OR purchases < 0
+           OR purchase_conversion_value < 0
+           OR date_start > date_stop
+    ) AS invalid_metric_rows
+FROM meta_ads_insights;
 
 \echo '=== Validation script finished ==='

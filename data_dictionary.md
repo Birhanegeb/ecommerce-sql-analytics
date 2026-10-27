@@ -12,6 +12,7 @@ analytics practice (aggregations, JOINs, GROUP BY/HAVING, window functions).
 | `customers.csv`   | Customers (300 rows) |
 | `orders.csv`      | Orders (~2000 rows) |
 | `order_items.csv` | Line items per order (~5000 rows) |
+| `meta_ads_insights.csv` | Daily Meta Ads campaign insights (created by the API extractor) |
 
 ## Relationships
 ```text
@@ -91,3 +92,21 @@ rows, and foreign keys enforce the relationships shown above.
 | `product_id` | INTEGER | Product included in this line item. | Required; foreign key to `products.product_id` |
 | `quantity` | INTEGER | Number of units purchased. | Required; greater than 0 |
 | `unit_price` | NUMERIC(10,2) | Price per unit recorded for this order item. | Required; greater than 0 |
+
+### `meta_ads_insights`
+
+| Column | Type | Description | Constraints |
+|--------|------|-------------|-------------|
+| `account_id` | VARCHAR(32) | Meta ad account identifier. | Primary key component |
+| `campaign_id` | VARCHAR(64) | Meta campaign identifier. | Primary key component |
+| `campaign_name` | VARCHAR(255) | Campaign name reported by Meta. | Required |
+| `date_start` | DATE | Inclusive reporting-period start date. | Primary key component |
+| `date_stop` | DATE | Inclusive reporting-period end date. | Primary key component; on or after `date_start` |
+| `impressions` | BIGINT | Ad impressions. | Required; zero or greater |
+| `reach` | BIGINT | People/accounts reached for this report date. | Required; zero or greater |
+| `clicks` | BIGINT | All clicks reported by Meta. | Required; zero or greater |
+| `inline_link_clicks` | BIGINT | Clicks on links in the ad. | Required; zero or greater |
+| `spend` | NUMERIC(18,4) | Amount spent in the ad account's currency. | Required; zero or greater |
+| `purchases` | NUMERIC(18,4) | Attributed purchase count reported by Meta. | Required; zero or greater |
+| `purchase_conversion_value` | NUMERIC(18,4) | Attributed purchase value reported by Meta. | Required; zero or greater |
+| `updated_at` | TIMESTAMP | Last time the campaign-day row was loaded. | Required |

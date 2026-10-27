@@ -402,6 +402,7 @@ analytics practice (aggregations, JOINs, GROUP BY/HAVING, window functions).
 | `customers.csv`   | Customers (300 rows) |
 | `orders.csv`      | Orders (~2000 rows) |
 | `order_items.csv` | Line items per order (~5000 rows) |
+| `meta_ads_insights.csv` | Daily Meta Ads campaign insights (created by the API extractor) |
 
 ## Relationships
 ```text
@@ -428,6 +429,24 @@ customers.customer_id
         │ 1:N
         ▼
 orders.customer_id
+```
+
+## Meta Ads Reporting
+
+`meta_ads_insights.csv` is produced separately by `extract_meta_ads.py` and
+loaded into the `meta_ads_insights` SQL table. Its grain is one campaign per
+account and reporting date.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `account_id` | VARCHAR(32) | Meta ad account identifier. |
+| `campaign_id` | VARCHAR(64) | Meta campaign identifier. |
+| `campaign_name` | VARCHAR(255) | Campaign name reported by Meta. |
+| `date_start`, `date_stop` | DATE | Inclusive reporting dates. |
+| `impressions`, `reach`, `clicks`, `inline_link_clicks` | BIGINT | Delivery and click metrics. |
+| `spend` | NUMERIC(18,4) | Amount spent in the ad account's currency. |
+| `purchases` | NUMERIC(18,4) | Attributed purchase count reported by Meta. |
+| `purchase_conversion_value` | NUMERIC(18,4) | Attributed purchase value reported by Meta. |
 """
 with open("data_dictionary.md", "w", encoding="utf-8") as f:
     f.write(data_dict)
